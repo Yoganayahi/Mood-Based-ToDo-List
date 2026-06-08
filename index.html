@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Advanced Mood To-Do List</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f2f2f2;
+      color: #333;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to right, #e0c3fc, #8ec5fc);
+      color: #333;
+    }
+
+
+    .dark {
+      background: #121212;
+      color: #eee;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 40px auto;
+      padding: 20px;
+      background: white;
+      border-radius: 15px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+
+    .dark .container {
+      background: #1f1f1f;
+    }
+
+    h2 {
+      text-align: center;
+    }
+
+    input, select {
+      padding: 10px;
+      margin: 5px;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+      outline: none;
+    }
+
+    button {
+      padding: 10px;
+      border: none;
+      border-radius: 10px;
+      background: #3498db;
+      color: white;
+      cursor: pointer;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    li {
+      margin: 10px 0;
+      padding: 10px;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .happy { background: #ffeaa7; }
+    .sad { background: #fab1a0; }
+    .focused { background: #a29bfe; }
+
+    .completed {
+      text-decoration: line-through;
+      opacity: 0.6;
+    }
+
+    .task-left {
+      flex: 1;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+    }
+
+    .toggle-theme {
+      float: right;
+      background: #333;
+      color: white;
+    }
+
+    .dark .toggle-theme {
+      background: #eee;
+      color: #333;
+    }
+
+    .task-meta {
+      font-size: 0.9em;
+      color: #555;
+    }
+
+    .dark .task-meta {
+      color: #aaa;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <button class="toggle-theme">🌙 Dark Mode</button>
+    <h2>📝 Mood-Based To-Do List</h2>
+    
+    <!-- Search & Filter -->
+    <div class="controls">
+      <input type="text" id="searchInput" placeholder="🔎 Search task..." oninput="filterTasks()" />
+      <select id="filterMood" onchange="filterTasks()">
+        <option value="all">All Moods</option>
+        <option value="happy">😄 Happy</option>
+        <option value="sad">😢 Sad</option>
+        <option value="focused">🎯 Focused</option>
+      </select>
+    </div>
+
+    <!-- Task Inputs -->
+    <input type="text" id="taskInput" placeholder="Enter task..." />
+    <select id="moodSelect">
+      <option value="happy">😄 Happy</option>
+      <option value="sad">😢 Sad</option>
+      <option value="focused">🎯 Focused</option>
+    </select>
+    <input type="date" id="dueDate" />
+    <button onclick="addTask()">Add</button>
+
+    <ul id="taskList"></ul>
+  </div>
+
+  <script>
+    let isDark = false;
+    const themeBtn = document.querySelector('.toggle-theme');
+    const taskList = document.getElementById('taskList');
+
+    themeBtn.onclick = () => {
+      document.body.classList.toggle('dark');
+      isDark = !isDark;
+      themeBtn.textContent = isDark ? "☀️ Light Mode" : "🌙 Dark Mode";
+    };
+
+    window.onload = () => {
+      const saved = JSON.parse(localStorage.getItem("tasks") || "[]");
+      saved.forEach(item => createTask(item.text, item.mood, item.due, item.completed));
+    };
+
+    function addTask() {
+      const text = document.getElementById("taskInput").value.trim();
+      const mood = document.getElementById("moodSelect").value;
+      const due = document.getElementById("dueDate").value;
+      if (text !== "") {
+        createTask(text, mood, due, false);
+        saveTasks();
+        document.getElementById("taskInput").value = "";
+        document.getElementById("dueDate").value = "";
+      }
+    }
+
+    function createTask(text, mood, due, completed) {
+      const li = document.createElement("li");
+      li.className = mood;
+      if (completed) li.classList.add("completed");
+
+      li.innerHTML = `
+        <div class="task-left">
+          <span onclick="toggleComplete(this)" style="cursor:pointer;">${getEmoji(mood)} ${text}</span><br>
+          <span class="task-meta">📅 ${due || "No due date"}</span>
+        </div>
+        <div>
+          <button onclick="editTask(this)">✏️</button>
+          <button onclick="deleteTask(this)">❌</button>
+        </div>
+      `;
+      taskList.appendChild(li);
+    }
+
+    function getEmoji(mood) {
+      switch (mood) {
+        case "happy": return "😄";
+        case "sad": return "😢";
+        case "focused": return "🎯";
+        default: return "📝";
+      }
+    }
+
+    function deleteTask(btn) {
+      btn.parentElement.parentElement.remove();
+      saveTasks();
+    }
+
+    function toggleComplete(span) {
+      span.closest("li").classList.toggle("completed");
+      saveTasks();
+    }
+
+    function editTask(btn) {
+      const li = btn.parentElement.parentElement;
+      const textSpan = li.querySelector("span");
+      const oldText = textSpan.textContent.slice(2).trim();
+
+      const newText = prompt("Edit your task:", oldText);
+      if (newText !== null && newText.trim() !== "") {
+        textSpan.innerHTML = textSpan.innerHTML.slice(0, 2) + " " + newText;
+        saveTasks();
+      }
+    }
+
+    function saveTasks() {
+      const items = [];
+      document.querySelectorAll("#taskList li").forEach(li => {
+        const text = li.querySelector("span").textContent.trim().slice(2);
+        const mood = li.classList.contains("happy") ? "happy" :
+                     li.classList.contains("sad") ? "sad" : "focused";
+        const completed = li.classList.contains("completed");
+        const due = li.querySelector(".task-meta").textContent.replace("📅", "").trim();
+        items.push({ text, mood, due, completed });
+      });
+      localStorage.setItem("tasks", JSON.stringify(items));
+      filterTasks();
+    }
+
+    function filterTasks() {
+      const keyword = document.getElementById("searchInput").value.toLowerCase();
+      const selectedMood = document.getElementById("filterMood").value;
+
+      document.querySelectorAll("#taskList li").forEach(li => {
+        const text = li.querySelector("span").textContent.toLowerCase();
+        const matchMood = selectedMood === "all" || li.classList.contains(selectedMood);
+        const matchText = text.includes(keyword);
+        li.style.display = matchMood && matchText ? "flex" : "none";
+      });
+    }
+  </script>
+</body>
+</html>
